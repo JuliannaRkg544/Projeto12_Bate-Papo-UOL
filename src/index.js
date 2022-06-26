@@ -8,23 +8,20 @@ import { MongoClient } from "mongodb"; // vai conectar a api ao database
 
 const server = express()
 server.use(json())
-
 server.use(cors())
-dotenv.config()
 
+dotenv.config()
 
 const mongoClient = new MongoClient(process.env.MONGO_URL) //criando a configuração da conexão
 let database = null;
 
 const promise = mongoClient.connect();
-promise.then((req,res) => {
+promise.then(() => {
     database = mongoClient.db(process.env.BANCO);
     console.log(chalk.green.bold("deu bom na conexão com o database"))
 }).catch(e => {console.log("deu ruim", e)})
 
-server.listen(process.env.PORT,()=>{
-    console.log(chalk.blue.bold(`servidor no ar na porta ${process.env.PORT}`))
-})
+
 
 server.post(("/participants"), async (req, res)=>{
    const name = req.body;
@@ -81,7 +78,7 @@ server.get(("/participants"), async (req, res)=>{
 
 server.post(("/messages"), async (req, res) =>{
   const message = req.body
-  const user = req.header
+  const {user:from} = req.headers
   //validar as msgs 
   const schemaMessage = joi.object({
   to: joi.string().required(),
@@ -95,10 +92,11 @@ server.post(("/messages"), async (req, res) =>{
     return
    }
 
-  console.log("user da header",user)
+  console.log("user da header",from)
   try {
     //buscar pelo nome no banquinho,
-    const validUser = await database.collection("users").findOne(user.user);
+    const validUser = await database.collection("users").findOne({name:from});
+    console.log(from)
     if(!validUser){
       res.sendStatus(422)
       return
@@ -106,7 +104,7 @@ server.post(("/messages"), async (req, res) =>{
     // montar a msg e enviar para o database
 
     await database.collection("messages").insertOne({
-      from: user.user,
+      from: from,
       to: message.to,
       text: message.text,
       type: message.type,
@@ -122,5 +120,37 @@ server.post(("/messages"), async (req, res) =>{
   }
   
 } )
+
+server.get(("/messages"), async (req, res) => {
+   //acessar o banco de dados e enviar as mensagens para o front
+   //receber um limite de sgs a ser enviada por um parâmetro via query string
+   const limit = parseInt(req.query.limit)
+   const {user} = req.headers
+
+   try {
+     const messages = await database.collection("messages").find().toArray();
+     const messagesReverse = messages.reverse()
+     const limitedMessages = messages.filter((msg) =>{
+      if((msg.to == 'Todos') || (msg.to == user) ||(msg.to == from)){
+        return msg
+      }
+     })
+
+     if (limit ==! NaN || limit ==!undefined){
+       res.send(limitedMessages.slice(-limit))
+     }
+     res.send(limitedMessages)
+    
+   } catch (error) {
+     console.log("erro ao cadstrar as msgs", error, "limite", limit);
+     res.sendStatus(422);
+     return
+   }
+
+})
+
+server.listen(process.env.PORT,()=>{
+  console.log(chalk.blue.bold(`servidor no ar na porta ${process.env.PORT}`))
+})
 
 

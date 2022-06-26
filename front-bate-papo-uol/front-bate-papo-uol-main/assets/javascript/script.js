@@ -14,7 +14,7 @@ function perguntarNome() {
 
 function registrarParticipante() {
   const dados = { name: nome };
-  const requisicao = axios.post("http://localhost:5000/participants", dados);
+  const requisicao = axios.post("http://localhost:5010/participants", dados);
   requisicao.then((response) => {
     nome = response.data.name || nome;
     entrarNaSala();
@@ -33,7 +33,7 @@ function entrarNaSala() {
 function carregarMensagens() {
   if (!buscarMensagens) return;
 
-  const requisicao = axios.get("http://localhost:5000/messages?limit=50", {
+  const requisicao = axios.get("http://localhost:5010/messages?limit=50", {
     headers: {
       User: nome
     }
@@ -42,7 +42,7 @@ function carregarMensagens() {
 }
 
 function carregarParticipantes() {
-  const requisicao = axios.get("http://localhost:5000/participants", {
+  const requisicao = axios.get("http://localhost:5010/participants", {
     headers: {
       User: nome
     }
@@ -63,7 +63,7 @@ function agendarAtualizacaoDeStatus() {
 }
 
 function atualizarStatus() {
-  axios.post("http://localhost:5000/status", {}, {
+  axios.post("http://localhost:5010/status", {}, {
     headers: {
       User: nome
     }
@@ -109,7 +109,7 @@ function enviarMensagem() {
   });
   renderizarMensagens();
 
-  const requisicao = axios.post("http://localhost:5000/messages", dados, {
+  const requisicao = axios.post("http://localhost:5010/messages", dados, {
     headers: {
       User: nome
     }
