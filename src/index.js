@@ -149,6 +149,23 @@ server.get(("/messages"), async (req, res) => {
 
 })
 
+server.post("/status", async (req, res)=>{
+   const {user} = req.headers;
+   try {
+     const updatedUsers = await database.collection("users").findOne({name:user})
+     if(!updatedUsers){
+     return res.sendStatus(404)}
+     //atualizar o database com o user e a hora
+     await database.collection("users").updateOne({name:user}, { $set: { lastStatus: Date.now() } })
+     res.sendStatus(200);
+   } catch (err) {
+    console.log("Erro ao atualizar status", err);
+    res.sendStatus(500)
+   }
+   
+
+})
+
 server.listen(process.env.PORT,()=>{
   console.log(chalk.blue.bold(`servidor no ar na porta ${process.env.PORT}`))
 })
