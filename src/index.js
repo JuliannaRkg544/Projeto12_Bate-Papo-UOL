@@ -165,6 +165,39 @@ server.post("/status", async (req, res)=>{
    
 
 })
+//verificar lista de parti e remover qm estiver mais de 10 segundos
+
+const checkTime = 15000
+
+setInterval( async(req,res) => {
+  const time = Date.now() - 10000 
+  try {
+    const inactiveParticipants = await database.collection("users").find({ lastStatus: { $lte: time } }).toArray();
+    if (inactiveParticipants.length > 0) {
+      const inativeMessages = inactiveParticipants.map(inactiveParticipant => {
+        return {
+          from: inactiveParticipant.name,
+          to: 'Todos',
+          text: 'sai da sala...',
+          type: 'status',
+          time: dayjs().format("HH:mm:ss")
+        }
+      });
+
+      await database.collection("messages").insertMany(inativeMessages);
+      await database.collection("users").deleteMany({ lastStatus: { $lte: time } });
+    }
+    
+  } catch (err) {
+    console.log("Deu ruim ao remover usuários ", err);
+    res.sendStatus(500);
+  }
+
+},checkTime)
+
+
+
+
 
 server.listen(process.env.PORT,()=>{
   console.log(chalk.blue.bold(`servidor no ar na porta ${process.env.PORT}`))
