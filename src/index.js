@@ -12,6 +12,10 @@ server.use(cors())
 
 dotenv.config()
 
+server.listen(process.env.PORT,()=>{
+  console.log(chalk.blue.bold(`servidor no ar na porta ${process.env.PORT}`))
+})
+
 const mongoClient = new MongoClient(process.env.MONGO_URL) //criando a configuração da conexão
 let database = null;
 
@@ -49,7 +53,7 @@ server.post(("/participants"), async (req, res)=>{
       to: 'Todos', 
       text: 'entra na sala...', 
       type: 'status', 
-      time: dayjs().format('HH:mm:ss')}
+      time: dayjs().locale('pt-br').format('HH:mm:ss')}
      )
      res.status(201).send("usuario cadastrado")
     }
@@ -121,35 +125,37 @@ server.post(("/messages"), async (req, res) =>{
   
 } )
 
-server.get(("/messages"), async (req, res) => {
+server.get("/messages", async (req, res) => {
    //acessar o banco de dados e enviar as mensagens para o front
    //receber um limite de sgs a ser enviada por um parâmetro via query string
    const limit = parseInt(req.query.limit)
    const {user} = req.headers
 
    try {
-     const messages = await database.collection("messages").find().toArray();
+     const messages = await database.collection("messages").find({}).toArray();
      const messagesReverse = messages.reverse()
-     const limitedMessages = messages.filter((msg) =>{
-      if((msg.to == 'Todos') || (msg.to == user) ||(msg.to == from)){
+     const limitedMessages = messagesReverse.filter(msg =>{
+      if((msg.to == 'Todos') || (msg.to == user) ||(msg.from == user)){
         return msg
       }
      })
 
-     if (limit ==! NaN || limit ==!undefined){
-       res.send(limitedMessages.slice(-limit))
+     if (!limit || limit == NaN){
+       return res.send(limitedMessages)
+       
      }
-     res.send(limitedMessages)
+     
+     res.send(limitedMessages.slice(-limit))
     
    } catch (error) {
-     console.log("erro ao cadstrar as msgs", error, "limite", limit);
+     console.log("erro ao cadstrar as msgs", error);
      res.sendStatus(422);
      return
    }
 
 })
 
-server.post("/status", async (req, res)=>{
+server.post(("/status"), async (req, res)=>{
    const {user} = req.headers;
    try {
      const updatedUsers = await database.collection("users").findOne({name:user})
@@ -167,16 +173,16 @@ server.post("/status", async (req, res)=>{
 })
 //verificar lista de parti e remover qm estiver mais de 10 segundos
 
-const checkTime = 15000
+const checkTime = (15000)
 
-setInterval( async(req,res) => {
-  const time = Date.now() - 10000 
+setInterval( async (req,res) => {
+  const time = Date.now() - (10000) 
   try {
-    const inactiveParticipants = await database.collection("users").find({ lastStatus: { $lte: time } }).toArray();
-    if (inactiveParticipants.length > 0) {
-      const inativeMessages = inactiveParticipants.map(inactiveParticipant => {
+    const inactiveUsers = await database.collection("users").find({ lastStatus: { $lte: time } }).toArray();
+    if (inactiveUsers.length > 0) {
+      const inactiveMessages = inactiveUsers.map(inactiveUser => {
         return {
-          from: inactiveParticipant.name,
+          from: inactiveUser.name,
           to: 'Todos',
           text: 'sai da sala...',
           type: 'status',
@@ -184,7 +190,7 @@ setInterval( async(req,res) => {
         }
       });
 
-      await database.collection("messages").insertMany(inativeMessages);
+      await database.collection("messages").insertMany(inactiveMessages);
       await database.collection("users").deleteMany({ lastStatus: { $lte: time } });
     }
     
@@ -194,13 +200,5 @@ setInterval( async(req,res) => {
   }
 
 },checkTime)
-
-
-
-
-
-server.listen(process.env.PORT,()=>{
-  console.log(chalk.blue.bold(`servidor no ar na porta ${process.env.PORT}`))
-})
 
 
